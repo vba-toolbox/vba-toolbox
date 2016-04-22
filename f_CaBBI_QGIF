@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % QGIF evolution function:
 %
-%                   [fx] = f_QGIF(Xt,Theta,Isyn,inF)
+%                   [fx] = f_CaBBI_QGIF(Xt,Theta,Isyn,inF)
 %
 % this function contains the equations and parameters of the QGIF neuron
 % model, and the over-time integration scheme
