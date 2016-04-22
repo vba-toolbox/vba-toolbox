@@ -19,7 +19,7 @@ clc; clear all; close all
 %% Step 1. Importing the fluorescence trace
 % import the fluorescence trace
 dataFolder = ['Fluor_Data/'];addpath('/Fluor_Data'); 
-Fluor_trace_name = 'fluorescence_data8';                                   % name of fluorescence trace
+Fluor_trace_name = 'fluorescence_data8';                                   % file name of fluorescence trace
 Data_Directory = [dataFolder,Fluor_trace_name,'.mat'];
 ydata(1,:) = importdata(Data_Directory);                                   % fluorescence trace before pre-processing 
 
