@@ -26,7 +26,7 @@ ydata(1,:) = importdata(Data_Directory);                                   % flu
 
 %% Step 2. Determining the sampling rate used to record the fluorescence trace
 sampling_rate = 22.6;                                                        % in [Hz], for our data enter 22.6
-display(['the sampling rate used to record the fluorescence trace was << ',num2str(22.6),' Hz >>']); %[Hz] 
+display(['the sampling rate used to record the fluorescence trace was << ',num2str(sampling_rate),' Hz >>']); %[Hz] 
 
 
 %% Step 3. Pre-processing
