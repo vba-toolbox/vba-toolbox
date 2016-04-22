@@ -61,7 +61,7 @@ Fluor_trace = ydata - fittedcurve;                                         % pre
 % this step applies tofluorescence traces with relatively low number of frames(like <3500 frames), and
 % may lead to an increase in the precision of the inferred voltage traces and therefore spike times. 
 nFrames_original = numel(Fluor_trace);
-if numel(Fluor_trace)<3000    
+if numel(Fluor_trace)<3500    
     nRepetition = ceil(5000/nFrames_original);
     Fluor_trace = repmat(Fluor_trace, 1, nRepetition);
     Low_nFrames = 'Yes';
@@ -98,18 +98,15 @@ inG.ind = 2;                                                               % ind
 
 
 %% Step 7. Setting the internal parameters of the optimization (VB-Laplace) method
-options.backwardLag = 3;                                         % lag parameter
-
-% setting internal parameters of the optimization (VB-Lapce) method
 options.backwardLag = 2;                                                   % lag parameter (selcet either 2 or 3)
 options.updateHP    = 1;                                                   % allowing the precison (hyper) parameters to be learnt from data
 options.MaxIter     = 2;  % or e.g. 3                                      % maximum number of optimization iterations (increasing this will lead to a  
                                                                            % complete optimization process, although it may take long time to be converged)
 % options.GnFigs      = 0;                                                 % uncomment (i.e. set to zero) to increase speed up the inversion 
-options.MaxIterInit = 0;
-options.DisplayWin  = 0;                                                   % uncomment (i.e. set to zero) to increase speed up the inversion
+options.MaxIterInit   = 0;
+options.DisplayWin    = 0;                                                 % uncomment (i.e. set to zero) to increase speed up the inversion
 % options.verbose     = 0;                                                 % uncomment (i.e. set to zero) to increase speed up the inversion
-options.decim       = 1;
+options.decim         = 1;
 
 
 %% Step 8. Assigning the prior densities: (mu --> mean), (Sigma --> variance)
