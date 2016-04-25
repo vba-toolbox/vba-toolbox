@@ -3,14 +3,18 @@
 % CaBBI method: [ Rahmati. et al. 2016, PLoS Comput Biol 12(2) ]
 %
 % To user:
-% I) in Step 1, determine the directory to the fluorescence trace (a vector)
-% II) in Step 2, determine the sampling rate (Hz) used for recoriding the fluorescence trace
+% I) in Step 1, determine the directory to the fluorescence trace (a row vector)
+% II) in Step 2, determine the sampling rate (Hz) used for recording the fluorescence trace
 % III) run the code
-% IV) the main otputs of the CaBBI are listed in Step 12. 
+% IV) the main outputs of the CaBBI are listed in Step 11. 
 %
-% Hint:
-% in Step 11, you can change the spike-detection threshold which is used to extract 
-% spike-times from inferred voltage traces. Such change may increase the spike-detection accuracy. 
+% Further options:
+% 1) In Step 10, if necessary, you can change the spike-detection threshold which is used to extract 
+%    spike-times from inferred voltage traces. Such change may increase the spike-detection accuracy. 
+% 2) In Step 6, if necessary, you can change some internal parameters of the optimization process.
+% 3) For further description of the toolbox options, please see:
+%    http://mbb-team.github.io/VBA-toolbox/wiki/Controlling-the-inversion-using-VBA-options/
+%    http://mbb-team.github.io/VBA-toolbox/wiki/VBA-output-structure/
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -19,18 +23,19 @@ clc; clear all; close all
 %% Step 1. Importing the fluorescence trace
 % import the fluorescence trace
 dataFolder = ['Fluor_Data/'];addpath('/Fluor_Data'); 
-Fluor_trace_name = 'fluorescence_data8';                                   % file name of fluorescence trace
-Data_Directory = [dataFolder,Fluor_trace_name,'.mat'];
-ydata(1,:) = importdata(Data_Directory);                                   % fluorescence trace before pre-processing 
+Fluor_trace_name = 'fluorescence_data8';                                   % file name of the fluorescence trace
+Data_Directory = [dataFolder,Fluor_trace_name,'.mat'];                     
+ydata = importdata(Data_Directory);                                        % the fluorescence trace before pre-processing 
 
 
 %% Step 2. Determining the sampling rate used to record the fluorescence trace
 sampling_rate = 22.6;                                                        % in [Hz], for our data enter 22.6
-display(['the sampling rate used to record the fluorescence trace was << ',num2str(sampling_rate),' Hz >>']); %[Hz] 
+display(['the sampling rate used to record the fluorescence trace is << ',num2str(sampling_rate),' Hz >>']); %[Hz] 
 
 
 %% Step 3. Pre-processing
 % normalizing
+if size(ydata,1) ~= 1; ydata = ydata'; end                                 % fluorescence trace should be a row vector
 ydata = (ydata - mean(ydata))./(max(mean(ydata),1));                       % relativer fluorescncee trace
 ydata = ydata - median(ydata);                                             % removing the median
 
@@ -56,38 +61,24 @@ end
 Fluor_trace = ydata - fittedcurve;                                         % pre-processed fluorescence trace 
 
 
-%% Step 4. Dealing with fluorence traces containing relatively low number of frames 
-
-% this step applies tofluorescence traces with relatively low number of frames(like <3500 frames), and
-% may lead to an increase in the precision of the inferred voltage traces and therefore spike times. 
-nFrames_original = numel(Fluor_trace);
-if numel(Fluor_trace)<3500    
-    nRepetition = ceil(5000/nFrames_original);
-    Fluor_trace = repmat(Fluor_trace, 1, nRepetition);
-    Low_nFrames = 'Yes';
-else
-    Low_nFrames = 'No';
-end
-
-
-%% Step 5. Scaling the data
-scale       = 1;                                                           % preferably set it a number between 0.4 and 1
+%% Step 4. Scaling the data
+scale       = 1;                                                           % preferably set it a number between e.g. 0.4 and 1
 Fluor_trace = scale* Fluor_trace/max(Fluor_trace);
-plot(xdata, scale*ydata/max(ydata) ,'b',xdata, Fluor_trace(1:nFrames_original),'r');
+plot(xdata, scale*ydata/max(ydata) ,'b',xdata, Fluor_trace(1:numel(Fluor_trace)),'r');
 legend('original','pre-processed')
 xlabel('time [frame]')
 ylabel('a.u.')
 title('fluorescence trace')
 
 
-%% Step 6. The generative model 
+%% Step 5. The generative model 
 % assigning the generative model
 f_fname = @f_CaBBI_QGIF;                                                   % evolution function
 g_fname = @g_CaBBI_observation;                                            % observation function
 
 % setting the parameters of the QGIF model used for inversion
 nFrames = numel(Fluor_trace);                                              % number of recording frames
-dt = 0.2;                                                                  % [ms], time-step size of the FHN model
+dt = 0.2;                                                                  % [ms], time-step size of the QGIF model
 inF.dt = dt; 
 inF.k_Ca0 = 0.002;                                                         % scale parameter of [Ca2+] kinetics
 TauCa_realTime = 7500;                                                     % [ms], the prior for decay time-constant of calcium transients in real time
@@ -97,19 +88,20 @@ inG.k_F0 = 5;                                                              % sca
 inG.ind = 2;                                                               % index of [Ca2+] variable
 
 
-%% Step 7. Setting the internal parameters of the optimization (VB-Laplace) method
-options.backwardLag = 2;                                                   % lag parameter (selcet either 2 or 3)
-options.updateHP    = 1;                                                   % allowing the precison (hyper) parameters to be learnt from data
-options.MaxIter     = 2;  % or e.g. 3                                      % maximum number of optimization iterations (increasing this will lead to a  
+%% Step 6. Setting the internal parameters of the optimization (VB-Laplace) method
+options.backwardLag = 2;                                                   % lag parameter (selcet either 2 or 3); increasing it e.g. to 3 (or higher) "may" provide more accurate inversions 
+options.updateHP    = 1;                                                   % this allows the precison (hyper) parameters to be learnt from data
+options.MaxIterInit = 0;  
+options.MaxIter     = 2;  % or e.g. 3                                      % maximum number of optimization iterations; increasing it will lead to a  
                                                                            % complete optimization process, although it may take long time to be converged)
-% options.GnFigs      = 0;                                                 % uncomment (i.e. set to zero) to increase speed up the inversion 
-options.MaxIterInit   = 0;
-options.DisplayWin    = 0;                                                 % uncomment (i.e. set to zero) to increase speed up the inversion
-% options.verbose     = 0;                                                 % uncomment (i.e. set to zero) to increase speed up the inversion
-options.decim         = 1;
+                                                                           
+% options.GnFigs      = 0;                                                 % set to zero to speed up the inversion                                                  
+options.DisplayWin  = 0;                                                   % set to zero to speed up the inversion
+options.verbose     = 1;                                                   % set to zero to speed up the inversion
+options.decim       = 1;                                                   % this determine the micro-time resolution; increasing it e.g. to 2 (or higher) "may" provide more accurate inversions
 
 
-%% Step 8. Assigning the prior densities: (mu --> mean), (Sigma --> variance)
+%% Step 7. Assigning the prior densities: (mu --> mean), (Sigma --> variance)
 % prior densities for initial conditions 
 priors.muX0         = [ -63.62; 5.65];                                     % [V(0), [Ca2+](0)]
 priors.SigmaX0(1,1) = 100;
@@ -157,51 +149,41 @@ dim.n_phi   = 2;                                                           % num
 dim.n_theta = 3;                                                           % number of evolution parameters
 
 
-%% Step 9. Inversion: inverting the QGIF model for the given fluorescence trace
+%% Step 8. Inversion: inverting the QGIF model for the given fluorescence trace
 [posterior, out] = VBA_NLStateSpaceModel(Fluor_trace,zeros(1,numel(Fluor_trace)),f_fname,g_fname,dim,options);
 
 
 %% Post-processing
-%% Step 10. Extracting the estimated Voltage and [Ca2+] traces (i.e. the posterior means)
-nFrames = nFrames_original;                                                % the original number of recording frames
-switch  Low_nFrames
-    case 'Yes';
-        V_inferred = posterior.muX(1,1:end);
-        V_inferred = V_inferred(1:nFrames_original);                       % inferred Voltage (posterior mean)
-        Ca_inferred = posterior.muX(end,1:end);
-        Ca_inferred = Ca_inferred(1:nFrames_original);                     % inferred [Ca2+] kinetics (posterior mean)
-        Fluor_trace = Fluor_trace(1:nFrames_original); 
-    otherwise
-        V_inferred = posterior.muX(1,1:end);                               % inferred Voltage (posterior mean)
-        Ca_inferred = posterior.muX(end,1:end);                            % inferred [Ca2+] kinetics (posterior mean)
-end
+%% Step 9. Extracting the estimated Voltage and [Ca2+] traces (i.e. the posterior means)
 
+V_inferred = posterior.muX(1,1:end);                                       % inferred Voltage (posterior mean)
+Ca_inferred = posterior.muX(end,1:end);                                    % inferred [Ca2+] kinetics (posterior mean)
 
 % Plotting the estimated voltage and [Ca2+] traces
 Calcium_basal = 50;                                                        % in [nM], the basal [Ca2+] concentration  
 
 % Plot the pre-processed fluorescence trace
 figure
-subplot(411); plot(1:nFrames_original, Fluor_trace,'g','LineWidth',2)
+subplot(411); plot(1:nFrames, Fluor_trace,'g','LineWidth',2)
 legend('fluoresnce')
-set(gca,'xLim',[0 nFrames_original])
+set(gca,'xLim',[0 nFrames])
 axis tight
 
 % Plot the posterior mean of [Ca2+] trace
-subplot(412); plot(1:nFrames_original, Ca_inferred+Calcium_basal,'r','LineWidth',2)
+subplot(412); plot(1:nFrames, Ca_inferred+Calcium_basal,'r','LineWidth',2)
 legend('inferred [Ca2+]')
-set(gca,'xLim',[0 nFrames_original])
+set(gca,'xLim',[0 nFrames])
 axis tight
 
 % plot the posterior mean of voltage trace
-subplot(413); plot(1:nFrames_original, V_inferred,'b','LineWidth',2)
-set(gca,'xLim',[0 nFrames_original])
+subplot(413); plot(1:nFrames, V_inferred,'b','LineWidth',2)
+set(gca,'xLim',[0 nFrames])
 axis tight
 
 
-%% Step 11. Detecting spike times (or event onsets) from inferred voltage trace
-Detection_threshold  = 0;                                                  % the spike (or) event detection threshold
-                                                                           % (if necessary change the detection threshold to e.g. o.5 or 1)                                                                                                                                                     
+%% Step 10. Detecting spike times (or event onsets) from inferred voltage trace
+Detection_threshold  = 0;                                                  % the spike (or event) detection threshold
+                                                                           % (if necessary, change the detection threshold to e.g. -10)                                                                                                                                                     
 idxSpikes = zeros(1,numel(V_inferred));
 count  = 1;
 for j=1:numel(V_inferred)-1
@@ -224,10 +206,11 @@ for j=1:numel(V_inferred)-1
     
 end
 idxSpikeToShow = idxSpikes;
-idxSpikeToShow(idxSpikeToShow~=0)=5;
+idxSpikeToShow(idxSpikeToShow~=0) = 1;
 
 subplot(414); plot(1:nFrames,idxSpikeToShow,'b','LineWidth',2)
 legend('inferred spiketimes');
+xlabel('time [frame]')
 set(gca,'xLim',[0 nFrames])
 axis tight
 
@@ -239,8 +222,8 @@ SpikeTimes_Frame = idxSpikeToShow(idxSpikeToShow~=0)';                     % rec
 SpikeTimes_millisecond = SpikeTimes_Frame*1000/sampling_rate;              % reconstructed spike (or event) times, in [ms]
 
 
-%% Step 12. Main outputs of CaBBI method
-CaBBI.nFrames           = nFrames_original;                                % the number of recordings frames of the given fluorescence trace                          
+%% Step 11. Main outputs of CaBBI method
+CaBBI.nFrames           = nFrames;                                         % the number of recordings frames of the given fluorescence trace                          
 CaBBI.sampling_rate     = sampling_rate;                                   % the sampling rate used for recording the fluorescence trace, in [Hz]
 CaBBI.Fluor_trace       = Fluor_trace;                                     % the pre-processed fluorescebce trace    
 CaBBI.V_inferred        = V_inferred;                                      % inferred Voltage trace (posterior mean) 
